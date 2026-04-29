@@ -54,6 +54,26 @@ Collection `slots` :
 | `time`      | string   | Horaire, ex : `19h-21h`                       |
 | `animators` | array    | Tableau d'objets `{ name: string }` (max 2)   |
 
+### Règles Firestore (important)
+
+Si vous voyez l'erreur `Missing or insufficient permissions`, vos règles Firestore bloquent la collection `slots`.
+
+Dans Firebase Console → Firestore Database → Rules, utilisez au minimum :
+
+```js
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /slots/{slotId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+  }
+}
+```
+
+⚠️ Ces règles sont permissives (MVP / démo). Pour la production, ajoutez une authentification et limitez les droits admin (création/suppression) aux utilisateurs autorisés.
+
 ## Lancer le serveur de développement
 
 ```bash

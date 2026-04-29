@@ -17,13 +17,26 @@ export default function Admin() {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [readError, setReadError] = useState('');
 
   useEffect(() => {
     const q = query(collection(db, 'slots'), orderBy('date', 'asc'));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setSlots(data);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setSlots(data);
+        setReadError('');
+      },
+      (err) => {
+        if (err?.code === 'permission-denied') {
+          setReadError('Accès refusé à Firestore. Vérifiez les règles de sécurité.');
+        } else {
+          setReadError('Impossible de charger les créneaux.');
+        }
+        console.error(err);
+      }
+    );
     return () => unsub();
   }, []);
 
@@ -42,7 +55,11 @@ export default function Admin() {
       setTime('');
       setMessage('Créneau créé avec succès !');
     } catch (err) {
-      setMessage("Erreur lors de la création du créneau.");
+      if (err?.code === 'permission-denied') {
+        setMessage('Création refusée par les règles Firestore.');
+      } else {
+        setMessage("Erreur lors de la création du créneau.");
+      }
       console.error(err);
     } finally {
       setLoading(false);
@@ -54,6 +71,9 @@ export default function Admin() {
     try {
       await deleteDoc(doc(db, 'slots', id));
     } catch (err) {
+      if (err?.code === 'permission-denied') {
+        setMessage('Suppression refusée par les règles Firestore.');
+      }
       console.error(err);
     }
   }
@@ -62,10 +82,9 @@ export default function Admin() {
     if (!dateStr) return '';
     const [y, m, d] = dateStr.split('-');
     return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
       day: 'numeric',
+      month: 'short',
+      year: 'numeric',
     });
   }
 
@@ -77,7 +96,10 @@ export default function Admin() {
 
   return (
     <div className="admin-wrapper">
-      <h1 className="admin-title">Administration</h1>
+      <div className="admin-header">
+        <h1 className="admin-title">Administration</h1>
+        <p className="admin-subtitle">Gérez les créneaux d'animation</p>
+      </div>
       <div className="admin-tabs">
         <button
           className={`tab-btn ${activeTab === 'create' ? 'tab-btn--active' : ''}`}
@@ -129,8 +151,9 @@ export default function Admin() {
       )}
 
       {activeTab === 'summary' && (
-        <div className="tab-panel">
+        <>
           <h2 className="tab-panel-title">Récapitulatif des créneaux</h2>
+          {readError && <p className="form-message">{readError}</p>}
           {slots.length === 0 ? (
             <p className="no-slots">Aucun créneau pour le moment.</p>
           ) : (
@@ -177,7 +200,7 @@ export default function Admin() {
               </table>
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

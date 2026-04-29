@@ -8,12 +8,25 @@ import Modal from './Modal';
 export default function PublicCalendar() {
   const [slots, setSlots] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [readError, setReadError] = useState('');
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'slots'), (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setSlots(data);
-    });
+    const unsub = onSnapshot(
+      collection(db, 'slots'),
+      (snapshot) => {
+        const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setSlots(data);
+        setReadError('');
+      },
+      (err) => {
+        if (err?.code === 'permission-denied') {
+          setReadError('Accès refusé à Firestore. Vérifiez les règles de sécurité.');
+        } else {
+          setReadError('Impossible de charger les créneaux.');
+        }
+        console.error(err);
+      }
+    );
     return () => unsub();
   }, []);
 
@@ -60,7 +73,11 @@ export default function PublicCalendar() {
 
   return (
     <div className="calendar-wrapper">
-      <h1 className="calendar-title">Calendrier des créneaux</h1>
+      <div className="calendar-hero">
+        <h1 className="calendar-title">Calendrier des créneaux</h1>
+        <p className="calendar-subtitle">Cliquez sur un jour disponible pour vous inscrire</p>
+      </div>
+      {readError && <p className="form-message">{readError}</p>}
       <div className="calendar-legend">
         <span className="legend-item">
           <span className="legend-dot available"></span> Disponible
