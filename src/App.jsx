@@ -17,7 +17,7 @@ function App() {
       </nav>
       <Routes>
         <Route path="/" element={<PublicCalendar />} />
-        <Route path="/admin" element={<Admin />} />
+        <Route path="/consultation" element={<Admin />} />
       </Routes>
     </BrowserRouter>
   );
