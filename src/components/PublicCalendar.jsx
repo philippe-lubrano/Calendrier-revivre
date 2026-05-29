@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -9,7 +10,28 @@ export default function PublicCalendar() {
   const [slots, setSlots] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [readError, setReadError] = useState('');
+  const [activeMonth, setActiveMonth] = useState(new Date());
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
+  // Parse URL parameters for month navigation
+  useEffect(() => {
+    const monthParam = searchParams.get('month');
+    if (monthParam) {
+      // Expected format: YYYY-MM (e.g., 2026-05)
+      const regex = /^\d{4}-\d{2}$/;
+      if (regex.test(monthParam)) {
+        const [year, month] = monthParam.split('-');
+        const parsedDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+        // Validate the date
+        if (!isNaN(parsedDate.getTime())) {
+          setActiveMonth(parsedDate);
+        }
+      }
+    }
+  }, [searchParams]);
+
+  // Listen to Firestore slots collection
   useEffect(() => {
     const unsub = onSnapshot(
       collection(db, 'slots'),
@@ -71,6 +93,15 @@ export default function PublicCalendar() {
     }
   }
 
+  // Handle month/year navigation
+  function handleActiveStartDateChange({ activeStartDate }) {
+    setActiveMonth(activeStartDate);
+    // Update URL with the new month
+    const year = activeStartDate.getFullYear();
+    const month = String(activeStartDate.getMonth() + 1).padStart(2, '0');
+    navigate(`/?month=${year}-${month}`);
+  }
+
   return (
     <div className="calendar-wrapper">
       <div className="calendar-hero">
@@ -92,6 +123,8 @@ export default function PublicCalendar() {
           tileClassName={getTileClassName}
           tileDisabled={getTileDisabled}
           locale="fr-FR"
+          activeStartDate={activeMonth}
+          onActiveStartDateChange={handleActiveStartDateChange}
         />
       </div>
       {selectedSlot && (
